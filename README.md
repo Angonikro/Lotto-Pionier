@@ -16,6 +16,8 @@ Lotto Pionier ist ein Lotto-Programm mit Statistik, Tippfunktionen, Datenbank-Un
 - 🔔 Eigene Gewinn-Glocke
 - 🌙 Helles und dunkles Theme
 
+[Github Seite](https://github.com/Angonikro/Lotto-Pionier/)
+
 ## Installation
 
 ### Windows
