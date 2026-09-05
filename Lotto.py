@@ -1,4 +1,15 @@
 import tkinter as tk
+
+
+# v0.4.45 Anbieter Auswahl
+ANBIETER_LISTE = [
+    "Lotto.de",
+    "Lotto24",
+    "WestLotto",
+    "Lotto Bayern",
+    "Lotto Hessen",
+]
+
 from tkinter import ttk, messagebox
 import random
 import sqlite3
@@ -18,7 +29,7 @@ import math
 from pathlib import Path
 from datetime import datetime, timedelta
 
-VERSION = "0.4.44"
+VERSION = "0.4.45"
 DB_FILE = Path(__file__).with_name("lotto.db")
 WESTLOTTO_URL = "https://www.westlotto.de/spielgemeinschaft/gewinnzahlen/gewinnzahlen.html"
 LOTTOZAHLEN_HOME = "https://lottozahlen.de/"
@@ -564,7 +575,7 @@ def fetch_current_draws_from_archive(show_message=True):
             )
         if errors:
             lines.append("Nicht geladen:\n" + "\n".join(errors))
-        messagebox.showinfo("Lotto-Daten aktualisiert", "\n\n".join(lines) + "\n\nQuelle: lottozahlen.de", parent=root)
+        messagebox.showinfo("Lotto-Daten aktualisiert", "\n\n".join(lines) + f"\n\nQuelle: {lade_anbieter()}", parent=root)
     return saved
 
 def fetch_current_draws(show_message=True):
@@ -1816,6 +1827,16 @@ STARTSEITE
 • „Aktualisieren“ ruft die aktuellen Daten aus dem Internet ab.
 • Neue Ziehungen werden nur einmal gespeichert.
 
+ANBIETER WECHSELN (v0.4.45)
+• Über das Anbieter-Menü kann die gewünschte Quelle ausgewählt werden.
+• Der zuletzt gewählte Anbieter wird automatisch in den Einstellungen gespeichert.
+• Beim nächsten Programmstart wird der gespeicherte Anbieter wieder geladen.
+• Beim Aktualisieren wird die aktuell ausgewählte Quelle angezeigt.
+
+DATENBANK LADEN
+• Beim ersten Start oder wenn noch keine Daten vorhanden sind, muss das Häkchen zum Herunterladen der Datenbank aktiviert werden.
+• Erst danach können die Daten geladen und für Analyse und Statistik verwendet werden.
+
 DATENBANK MANAGER
 • Der „Datenbank Manager“ ist direkt unter „Lottozahlen ziehen“ erreichbar.
 • Ein Datum kann direkt eingegeben oder über das kleine Kalenderfenster ausgewählt werden.
@@ -2286,6 +2307,28 @@ filem = tk.Menu(menu,tearoff=0)
 filem.add_command(label="Beenden",command=root.destroy)
 menu.add_cascade(label="Datei",menu=filem)
 
+def lade_anbieter():
+    cfg = configparser.ConfigParser()
+    try:
+        if SETTINGS_FILE.exists():
+            cfg.read(SETTINGS_FILE, encoding="utf-8")
+        return cfg.get("ANBIETER", "anbieter", fallback="Lotto.de")
+    except Exception:
+        return "Lotto.de"
+
+
+def speichern_anbieter(name):
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    cfg = configparser.ConfigParser()
+    if SETTINGS_FILE.exists():
+        cfg.read(SETTINGS_FILE, encoding="utf-8")
+    if not cfg.has_section("ANBIETER"):
+        cfg.add_section("ANBIETER")
+    cfg.set("ANBIETER", "anbieter", name)
+    with SETTINGS_FILE.open("w", encoding="utf-8") as f:
+        cfg.write(f)
+
+
 statm = tk.Menu(menu,tearoff=0)
 statm.add_command(label="Statistik anzeigen",command=show_statistics)
 statm.add_command(label="Datenbank Manager",command=show_database_manager)
@@ -2314,6 +2357,41 @@ databasem.add_checkbutton(
 )
 databasem.add_command(label="Datenbank Manager", command=show_database_manager)
 menu.add_cascade(label="Datenbank", menu=databasem)
+
+# v0.4.45 Anbieter beim Start laden
+def lade_anbieter_startwert():
+    return lade_anbieter()
+
+
+# Anbieter Menü
+anbieterm = tk.Menu(menu, tearoff=0)
+menu.add_cascade(label="Anbieter", menu=anbieterm)
+# Anbieter-Menü Einträge
+anbieter_var = tk.StringVar(value=lade_anbieter_startwert())
+
+def anbieter_menu_geklickt(name):
+    try:
+        from tkinter import messagebox
+        if messagebox.askyesno(
+            "Anbieter wechseln",
+            f"Soll der Anbieter wirklich gewechselt werden zu:\n\n{name}?"
+        ):
+            anbieter_var.set(name)
+            try:
+                speichern_anbieter(name)
+            except Exception:
+                pass
+    except Exception:
+        anbieter_var.set(name)
+
+for anbieter_name in ANBIETER_LISTE:
+    anbieterm.add_radiobutton(
+        label=anbieter_name,
+        variable=anbieter_var,
+        value=anbieter_name,
+        command=lambda n=anbieter_name: anbieter_menu_geklickt(n)
+    )
+
 
 soundm = tk.Menu(menu, tearoff=0)
 sound_var = tk.BooleanVar(value=sound_enabled)
@@ -2346,3 +2424,4 @@ apply_theme()
 update_home_cards()
 root.after(300, startup_sync)
 root.mainloop()
+
