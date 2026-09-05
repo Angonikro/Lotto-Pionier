@@ -18,7 +18,7 @@ import math
 from pathlib import Path
 from datetime import datetime, timedelta
 
-VERSION = "0.4.41"
+VERSION = "0.4.44"
 DB_FILE = Path(__file__).with_name("lotto.db")
 WESTLOTTO_URL = "https://www.westlotto.de/spielgemeinschaft/gewinnzahlen/gewinnzahlen.html"
 LOTTOZAHLEN_HOME = "https://lottozahlen.de/"
