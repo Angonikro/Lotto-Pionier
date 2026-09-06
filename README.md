@@ -81,3 +81,6 @@ Die aktuelle Version findest du unter den GitHub Releases.
 ## Version
 
 Lotto Pionier v0.4.44
+
+
+73 de DO2QG Andreas
