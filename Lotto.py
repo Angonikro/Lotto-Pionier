@@ -1,4 +1,5 @@
 import tkinter as tk
+import sys
 
 
 # v0.4.45 Anbieter Auswahl
@@ -29,7 +30,7 @@ import math
 from pathlib import Path
 from datetime import datetime, timedelta
 
-VERSION = "0.4.45"
+VERSION = "0.4.46"
 DB_FILE = Path(__file__).with_name("lotto.db")
 WESTLOTTO_URL = "https://www.westlotto.de/spielgemeinschaft/gewinnzahlen/gewinnzahlen.html"
 LOTTOZAHLEN_HOME = "https://lottozahlen.de/"
@@ -495,16 +496,13 @@ def parse_lottozahlen_draw_page(plain, date_str):
 
     nums, sz = extract_six_lotto_numbers(plain[dm.end():])
 
+    # Gewinnquoten sind am Tag nach der Ziehung ggf. noch nicht veröffentlicht.
+    # Die Ziehung selbst darf deshalb trotzdem gespeichert und angezeigt werden.
+    quotas = []
     qmatch = re.search(r"Gewinnquoten\s+LOTTO\s*6\s*aus\s*49", plain, re.I)
-    if not qmatch:
-        raise ValueError("Gewinnquoten nicht gefunden.")
-    qtext = plain[qmatch.end():qmatch.end() + 14000]
-    quotas = parse_quota_rows(qtext)
-
-    # Do not reject a page merely because one fixed/empty class is rendered
-    # differently. The explicit rows are still useful for tip checking.
-    if not quotas:
-        raise ValueError("Keine Gewinnquoten konnten erkannt werden.")
+    if qmatch:
+        qtext = plain[qmatch.end():qmatch.end() + 14000]
+        quotas = parse_quota_rows(qtext)
 
     dt = datetime.strptime(date_str, "%d.%m.%Y")
     day = "Mittwoch" if dt.weekday() == 2 else "Samstag" if dt.weekday() == 5 else dt.strftime("%A")
@@ -2015,7 +2013,7 @@ def load_settings():
             cfg.get("Appearance", "theme", fallback="light").lower(),
             cfg.getboolean("Data", "external_database", fallback=False),
             cfg.getboolean("Sound", "enabled", fallback=True),
-            cfg.get("Sound", "driver", fallback="pulse").lower(),
+            cfg.get("Sound", "driver", fallback=("windows" if sys.platform == "win32" else "auto")).lower(),
         )
     except Exception:
         return "light", False, True, "pulse"
@@ -2033,7 +2031,7 @@ def save_settings():
         cfg.write(f)
 
 # ---------- SOUND ----------
-SOUND_DRIVERS = ("pulse", "alsa", "portaudio")
+SOUND_DRIVERS = ("auto", "windows", "pulse", "alsa", "portaudio")
 
 def _sound_wave_path():
     """Create a tiny bell-like WAV once and return its path."""
@@ -2061,6 +2059,12 @@ def _sound_wave_path():
 
 def available_sound_drivers():
     found = []
+    if sys.platform == "win32":
+        try:
+            import winsound  # noqa: F401
+            found.append("windows")
+        except Exception:
+            pass
     if shutil.which("paplay") or shutil.which("pactl"):
         found.append("pulse")
     if shutil.which("aplay"):
@@ -2079,6 +2083,14 @@ def play_sound(force=False):
     def worker():
         path = _sound_wave_path()
         try:
+            if (sound_driver in ("auto", "windows")) and sys.platform == "win32":
+                try:
+                    import winsound
+                    flags = winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT
+                    winsound.PlaySound(str(path), flags)
+                    return
+                except Exception:
+                    pass
             if sound_driver == "pulse" and shutil.which("paplay"):
                 subprocess.run(["paplay", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=4)
                 return
@@ -2117,7 +2129,7 @@ def set_sound_enabled(enabled):
 
 def set_sound_driver(driver):
     global sound_driver
-    sound_driver = driver if driver in SOUND_DRIVERS else "pulse"
+    sound_driver = driver if driver in SOUND_DRIVERS else ("windows" if sys.platform == "win32" else "auto")
     if "driver_var_menu" in globals():
         driver_var_menu.set(sound_driver)
     save_settings()
@@ -2331,7 +2343,6 @@ def speichern_anbieter(name):
 
 statm = tk.Menu(menu,tearoff=0)
 statm.add_command(label="Statistik anzeigen",command=show_statistics)
-statm.add_command(label="Datenbank Manager",command=show_database_manager)
 menu.add_cascade(label="Statistiken",menu=statm)
 
 tipsm = tk.Menu(menu,tearoff=0)

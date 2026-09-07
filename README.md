@@ -1,12 +1,6 @@
-# Lotto Pionier v0.4.45 🍀
+# Lotto Pionier v0.4.46 🍀
 
 Lotto Pionier ist ein Lotto-Programm mit Statistik, Tippfunktionen, Datenbank-Unterstützung und eigener Gewinn-Glocke.
-
-![Lotto_Pionier](lotto-pionier.png)
-
-![Lotto_Pionier](lotto-pionier1.png)
-
-[Github Seite](https://github.com/Angonikro/LOTTO-Pionier/)
 
 ## Funktionen
 
@@ -80,7 +74,10 @@ Die aktuelle Version findest du unter den GitHub Releases.
 
 ## Version
 
-Lotto Pionier v0.4.44
+Lotto Pionier v0.4.46
 
 
-73 de DO2QG Andreas
+## v0.4.46
+- Aktuelle Samstag-Ziehung wird auch dann gespeichert/angezeigt, wenn die Gewinnquoten noch nicht veröffentlicht sind.
+- Windows-Soundtreiber über `winsound` ergänzt.
+- Sound-Treiber „Auto“ ergänzt.
