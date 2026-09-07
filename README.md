@@ -2,6 +2,12 @@
 
 Lotto Pionier ist ein Lotto-Programm mit Statistik, Tippfunktionen, Datenbank-Unterstützung und eigener Gewinn-Glocke.
 
+
+![Lotto-Pionier](lotto-pionier.png)
+
+[Github Seite](https://github.com/Angonikro/Lotto-Pionier/)
+
+
 ## Funktionen
 
 - 🎱 Lottozahlen anzeigen und aktualisieren
