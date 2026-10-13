@@ -1,4 +1,17 @@
+## 0.4.47 – Startkorrektur
+- Fehler beim Start behoben: Das Datenverzeichnis unter `~/.local/share/lotto-pionier/` wird vor dem Öffnen der SQLite-Datenbank angelegt.
+- Versionsnummer bleibt unverändert bei 0.4.47.
+
 # CHANGELOG
+
+## v0.4.47
+
+- Fehler behoben, durch den das gewählte helle/dunkle Theme nach einem Neustart nicht zuverlässig erhalten blieb.
+- Einstellungen werden konsistent in `~/.config/lotto-pionier/settings.ini` gespeichert.
+- Vorhandene Einstellungen werden bei Bedarf aus dem alten Programmordner übernommen.
+- Beim Speichern bleiben weitere INI-Abschnitte, darunter die Anbieterauswahl, erhalten.
+- Temporäre Datei und atomisches Ersetzen verhindern unvollständige INI-Dateien.
+
 
 ## v0.4.46
 

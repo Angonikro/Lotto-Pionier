@@ -30,8 +30,9 @@ import math
 from pathlib import Path
 from datetime import datetime, timedelta
 
-VERSION = "0.4.46"
-DB_FILE = Path(__file__).with_name("lotto.db")
+VERSION = "0.4.47"
+APP_DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))) / "lotto-pionier"
+DB_FILE = APP_DATA_DIR / "lotto.db"
 WESTLOTTO_URL = "https://www.westlotto.de/spielgemeinschaft/gewinnzahlen/gewinnzahlen.html"
 LOTTOZAHLEN_HOME = "https://lottozahlen.de/"
 LOTTOZAHLEN_DRAW = "https://lottozahlen.de/lotto/{date}/"
@@ -39,6 +40,9 @@ EXTERNAL_DB_URL = "https://raw.githubusercontent.com/lotto-aktuell/lotto-daten-f
 
 
 def db():
+    # Ensure the per-user data directory exists before SQLite opens the database.
+    # create_tables() is called during startup, before other data paths are created.
+    APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     return conn
@@ -2001,14 +2005,31 @@ def startup_sync():
 
 
 # ---------- EINSTELLUNGEN / INI ----------
-SETTINGS_DIR = Path(__file__).resolve().parent / "data"
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "lotto-pionier"
+SETTINGS_DIR = CONFIG_DIR
 SETTINGS_FILE = SETTINGS_DIR / "settings.ini"
+LEGACY_SETTINGS_FILES = (
+    Path(__file__).resolve().parent / "data" / "settings.ini",
+    Path(__file__).resolve().parent / "settings.ini",
+)
 
 def load_settings():
     cfg = configparser.ConfigParser()
     try:
         if SETTINGS_FILE.exists():
             cfg.read(SETTINGS_FILE, encoding="utf-8")
+        else:
+            # Migrate the first existing legacy settings file without deleting it.
+            for legacy in LEGACY_SETTINGS_FILES:
+                if legacy.is_file():
+                    cfg.read(legacy, encoding="utf-8")
+                    try:
+                        SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+                        with SETTINGS_FILE.open("w", encoding="utf-8") as f:
+                            cfg.write(f)
+                    except OSError:
+                        pass
+                    break
         return (
             cfg.get("Appearance", "theme", fallback="light").lower(),
             cfg.getboolean("Data", "external_database", fallback=False),
@@ -2016,29 +2037,36 @@ def load_settings():
             cfg.get("Sound", "driver", fallback=("windows" if sys.platform == "win32" else "auto")).lower(),
         )
     except Exception:
-        return "light", False, True, "pulse"
+        return "light", False, True, ("windows" if sys.platform == "win32" else "auto")
 
 def save_settings():
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     cfg = configparser.ConfigParser()
     cfg["Appearance"] = {"theme": current_theme}
     cfg["Data"] = {"external_database": str(external_database).lower()}
-    cfg["Sound"] = {
-        "enabled": str(sound_enabled).lower(),
-        "driver": sound_driver,
-    }
-    with SETTINGS_FILE.open("w", encoding="utf-8") as f:
+    cfg["Sound"] = {"enabled": str(sound_enabled).lower(), "driver": sound_driver}
+    tmp = SETTINGS_FILE.with_suffix(".ini.tmp")
+    with tmp.open("w", encoding="utf-8") as f:
         cfg.write(f)
+    tmp.replace(SETTINGS_FILE)
 
 # ---------- SOUND ----------
 SOUND_DRIVERS = ("auto", "windows", "pulse", "alsa", "portaudio")
 
 def _sound_wave_path():
-    """Create a tiny bell-like WAV once and return its path."""
-    path = SETTINGS_DIR / "win_bell.wav"
+    """Keep generated notification audio in the user's data directory."""
+    APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    path = APP_DATA_DIR / "win_bell.wav"
     if path.exists():
         return path
-    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+    for legacy_path in (CONFIG_DIR / "win_bell.wav", APP_DATA_DIR / "data" / "win_bell.wav",
+                        Path(__file__).resolve().parent / "data" / "win_bell.wav"):
+        try:
+            if legacy_path.is_file() and legacy_path.resolve() != path.resolve():
+                shutil.copy2(legacy_path, path)
+                return path
+        except OSError:
+            continue
     rate = 44100
     duration = 0.75
     samples = int(rate * duration)
